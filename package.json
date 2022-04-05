@@ -10,6 +10,9 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "puppeteer": "^13.5.2"
+    "fs": "0.0.1-security",
+    "puppeteer": "^13.5.2",
+    "puppeteer-extra": "^3.2.3",
+    "puppeteer-extra-plugin-stealth": "^2.9.0"
   }
 }
