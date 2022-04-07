@@ -1,12 +1,13 @@
-// const puppeteer = require('puppeteer');
-const puppeteer = require("puppeteer-extra");
-const fs = require("fs");
+import puppeteer from "puppeteer-extra";
+import fs from "fs";
+import { collection, addDoc } from "firebase/firestore";
+import db from "./server.js";
 
 // add stealth plugin and use defaults (all evasion techniques)
-const StealthPlugin = require("puppeteer-extra-plugin-stealth");
+import StealthPlugin from "puppeteer-extra-plugin-stealth";
 puppeteer.use(StealthPlugin());
 
-let nbPage = 1;
+let nbPage = 2;
 let category = "soins";
 
 (async () => {
@@ -36,16 +37,16 @@ let category = "soins";
 
 async function ScrapDetailAndcreateJSON(products, browser) {
   let json = [];
-  for (element of products) {
+  for (let element of products) {
     const pageDetail = await browser.newPage();
     try {
       await pageDetail.goto(`${element.link}`);
-      console.count("produits ");
+      console.count("produit ");
       const detailProduct = await pageDetail.evaluate(() => {
         let list = document.querySelectorAll("#fiche > div");
-        let productsDetail = [];
+        let productDetail = {};
         for (elem of list) {
-          productsDetail.push({
+          productDetail = {
             ean: elem.querySelector("#type_info_prio_cab_0 > span")?.innerText,
             nameProduct: elem.querySelector("#type_info_prio_12_1")?.innerText,
             nameBrand: elem.querySelector("div.prod_subtitle > a")?.innerText,
@@ -59,15 +60,16 @@ async function ScrapDetailAndcreateJSON(products, browser) {
             usingAdvice: elem.querySelector("#type_info_prio_6_1 > p")
               ?.innerText,
             description: elem.querySelector("#type_info_prio_11_1 > p")
-              ?.outerHTML,
+              ?.innerText,
             composition: elem.querySelector(
               "div.div_table_informations > div > div:nth-child(3) > div.content_zone_desc.tabcontent"
             )?.innerText,
-          });
+          };
         }
-        return productsDetail;
+        return productDetail;
       });
-      json.push(Object.assign({}, detailProduct));
+      json.push(detailProduct);
+      sendDataToFirebase(detailProduct);
     } catch (error) {
       console.log(error.message);
     }
@@ -78,4 +80,13 @@ async function ScrapDetailAndcreateJSON(products, browser) {
     `./${category}.json`,
     JSON.stringify(Object.assign(json, json))
   );
+}
+
+async function sendDataToFirebase(data) {
+  try {
+    const docRef = await addDoc(collection(db, `${category}`), data);
+    console.log("ID: ", docRef.id);
+  } catch (e) {
+    console.error("Erreur à l'ajout: ", e);
+  }
 }
