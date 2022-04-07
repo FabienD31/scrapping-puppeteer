@@ -1,3 +1,4 @@
+// const puppeteer = require('puppeteer');
 const puppeteer = require("puppeteer-extra");
 const fs = require("fs");
 
@@ -6,7 +7,7 @@ const StealthPlugin = require("puppeteer-extra-plugin-stealth");
 puppeteer.use(StealthPlugin());
 
 let nbPage = 1;
-let category = "veterinaire";
+let category = "soins";
 
 (async () => {
   let nb = 1;
@@ -17,7 +18,7 @@ let category = "veterinaire";
     await page.goto(
       `https://www.parapharmacielafayette.com/fr/cp/${category}.html?page=${nb}`
     );
-    const choco = await page.evaluate(() => {
+    const linkListProduct = await page.evaluate(() => {
       let products = [];
       let list = document.querySelectorAll("#listing > article");
       for (elem of list) {
@@ -27,49 +28,54 @@ let category = "veterinaire";
       }
       return products;
     });
-    ScrapDetailAndcreateJSON(choco);
+    await ScrapDetailAndcreateJSON(linkListProduct, browser);
     nb++;
   }
   await browser.close();
 })();
 
-async function ScrapDetailAndcreateJSON(products) {
-  //   let obj = Object.assign({}, products);
-  // console.log(obj);
-  const browser2 = await puppeteer.launch({ headless: true });
-  const pageDetail = await browser2.newPage();
-  await pageDetail.goto(
-    `https://www.parapharmacielafayette.com/fr/p/dermorens-creme-mains-seches-abimees-75-ml-F61012.html`
-    // `${products.link}`
-  );
-  const detailProduct = await pageDetail.evaluate(() => {
-    let productsDetail = [];
-    let list = document.querySelectorAll("#fiche > div");
-    for (elem of list) {
-      productsDetail.push({
-        ean: elem.querySelector("#type_info_prio_cab_0 > span")?.innerText,
-        nameProduct: elem.querySelector("#type_info_prio_12_1")?.innerText,
-        nameBrand: elem.querySelector("div.prod_subtitle > a")?.innerText,
-        price: elem.querySelector("div.infos_prix_fiche_produit > span")
-          ?.innerText,
-        urlProduct: elem.querySelector("link")?.href,
-        img: elem.querySelector("img")?.src,
-        shape: elem.querySelector("#type_info_prio_4_1")?.innerText,
-        contenance: elem.querySelector("#type_info_prio_3_1")?.innerText,
-        presentation: elem.querySelector("#type_info_prio_5_1")?.innerText,
-        usingAdvice: elem.querySelector("#type_info_prio_6_1 > p")?.innerText,
-        description: elem.querySelector("#type_info_prio_11_1 > p")?.outerHTML,
-        composition: elem.querySelector(
-          "div.div_table_informations > div > div:nth-child(3) > div.content_zone_desc.tabcontent"
-        )?.innerText,
+async function ScrapDetailAndcreateJSON(products, browser) {
+  let json = [];
+  for (element of products) {
+    const pageDetail = await browser.newPage();
+    try {
+      await pageDetail.goto(`${element.link}`);
+      console.count("produits ");
+      const detailProduct = await pageDetail.evaluate(() => {
+        let list = document.querySelectorAll("#fiche > div");
+        let productsDetail = [];
+        for (elem of list) {
+          productsDetail.push({
+            ean: elem.querySelector("#type_info_prio_cab_0 > span")?.innerText,
+            nameProduct: elem.querySelector("#type_info_prio_12_1")?.innerText,
+            nameBrand: elem.querySelector("div.prod_subtitle > a")?.innerText,
+            price: elem.querySelector("div.infos_prix_fiche_produit > span")
+              ?.innerText,
+            urlProduct: elem.querySelector("link")?.href,
+            img: elem.querySelector("img")?.src,
+            shape: elem.querySelector("#type_info_prio_4_1")?.innerText,
+            contenance: elem.querySelector("#type_info_prio_3_1")?.innerText,
+            presentation: elem.querySelector("#type_info_prio_5_1")?.innerText,
+            usingAdvice: elem.querySelector("#type_info_prio_6_1 > p")
+              ?.innerText,
+            description: elem.querySelector("#type_info_prio_11_1 > p")
+              ?.outerHTML,
+            composition: elem.querySelector(
+              "div.div_table_informations > div > div:nth-child(3) > div.content_zone_desc.tabcontent"
+            )?.innerText,
+          });
+        }
+        return productsDetail;
       });
+      json.push(Object.assign({}, detailProduct));
+    } catch (error) {
+      console.log(error.message);
     }
-    return productsDetail;
-  });
-  console.log(detailProduct);
-  await browser2.close();
+    await pageDetail.close();
+  } // end forEach
 
-  //   let json = JSON.stringify(obj);
-  //   fs.appendFileSync(`./${category}.json`, json);
-  //   fs.writeFileSync(`./${category}.json`, json);
+  fs.appendFileSync(
+    `./${category}.json`,
+    JSON.stringify(Object.assign(json, json))
+  );
 }
