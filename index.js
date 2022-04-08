@@ -41,7 +41,7 @@ async function ScrapDetailAndcreateJSON(products, browser) {
     const pageDetail = await browser.newPage();
     try {
       await pageDetail.goto(`${element.link}`);
-      console.count("produit ");
+      console.count("produit : ");
       const detailProduct = await pageDetail.evaluate(() => {
         let list = document.querySelectorAll("#fiche > div");
         let productDetail = {};
@@ -71,10 +71,10 @@ async function ScrapDetailAndcreateJSON(products, browser) {
       json.push(detailProduct);
       sendDataToFirebase(detailProduct);
     } catch (error) {
-      console.log(error.message);
+      throw error;
     }
     await pageDetail.close();
-  } // end forEach
+  }
 
   fs.appendFileSync(
     `./${category}.json`,
@@ -85,8 +85,7 @@ async function ScrapDetailAndcreateJSON(products, browser) {
 async function sendDataToFirebase(data) {
   try {
     const docRef = await addDoc(collection(db, `${category}`), data);
-    console.log("ID: ", docRef.id);
   } catch (e) {
-    console.error("Erreur à l'ajout: ", e);
+    throw e;
   }
 }
